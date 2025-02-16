@@ -8,4 +8,4 @@
 # purposes.  The copyright owner does not offer any warranties or representations, nor do
 # they accept any liabilities with respect to them.
 
-25.1.0 This is the first version of Acme One
+D01 - This is the project version of the first deliverable
