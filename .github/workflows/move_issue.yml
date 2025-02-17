@@ -1,0 +1,24 @@
+name: Move Issue to Done
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  move-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Move Issue to Done
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const issue_number = context.payload.pull_request.body.match(/closes #(\d+)/i);
+            if (issue_number) {
+              github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue_number[1],
+                state: "closed"
+              });
+            }
