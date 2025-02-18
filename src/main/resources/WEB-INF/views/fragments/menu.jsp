@@ -21,6 +21,10 @@
 		<acme:menu-option code="master.menu.anonymous" access="isAnonymous()">
 			<acme:menu-suboption code="master.menu.anonymous.favourite-link" action="http://www.example.com/"/>
 			<acme:menu-suboption code="master.menu.anonymous.pablo-mejias" action="http://www.sevillafc.es/"/>
+			<acme:menu-suboption code="master.menu.anonymous.francisco-perez" action="https://www.chollometro.com/"/>
+			<acme:menu-suboption code="master.menu.anonymous.andres-garcia" action="https://chatgpt.com/"/>
+			<acme:menu-suboption code="master.menu.anonymous.alejandro-corral" action="https://www.youtube.com/"/>
+			<acme:menu-suboption code="master.menu.anonymous.jesus-oria" action="https://www.philadelphiaeagles.com/"/>
 		</acme:menu-option>
 
 		<acme:menu-option code="master.menu.administrator" access="hasRealm('Administrator')">
