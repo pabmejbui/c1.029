@@ -5,7 +5,7 @@ on:
     types: [closed]
   issue_comment:
     types: [created, edited]
-  workflow_dispatch:  # Permite ejecutar manualmente desde GitHub Actions
+  workflow_dispatch:
 
 jobs:
   move-issue:
@@ -17,7 +17,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const issue_number = context.payload.pull_request.body.match(/closes #(\d+)/i);
+            const issue_number = context.payload.pull_request.body ? context.payload.pull_request.body.match(/closes #(\d+)/i) : null;
             if (issue_number) {
               github.rest.issues.update({
                 owner: context.repo.owner,
@@ -34,7 +34,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const comment_body = context.payload.comment.body;
-            const issue_number = comment_body.match(/closes #(\d+)/i);
+            const issue_number = comment_body ? comment_body.match(/closes #(\d+)/i) : null;
             if (issue_number) {
               github.rest.issues.update({
                 owner: context.repo.owner,
@@ -47,7 +47,7 @@ jobs:
   check-closed-prs:
     name: Check Closed PRs
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'  # Solo ejecuta este job cuando es manual
+    if: github.event_name == 'workflow_dispatch'
     steps:
       - name: Find Closed PRs with Unclosed Issues
         uses: actions/github-script@v6
@@ -65,7 +65,7 @@ jobs:
                 per_page: 50
               });
 
-              return prs;
+              return prs || [];  // Asegurar que siempre se devuelva un array
             }
 
             async function getPRComments(prNumber) {
@@ -76,7 +76,7 @@ jobs:
                 per_page: 50
               });
 
-              return comments.map(comment => comment.body);
+              return comments || []; // Asegurar que siempre se devuelva un array
             }
 
             async function closeIssue(issue_number) {
@@ -107,13 +107,13 @@ jobs:
               const closedPRs = await getClosedPRs();
 
               for (const pr of closedPRs) {
-                let issueMatches = pr.body ? pr.body.match(/closes #(\d+)/gi) : [];
+                let issueMatches = pr.body ? pr.body.match(/closes #(\d+)/gi) || [] : [];
 
                 // Buscar referencias en los comentarios de la PR
                 const comments = await getPRComments(pr.number);
                 for (const comment of comments) {
-                  const matches = comment.match(/closes #(\d+)/gi);
-                  if (matches) issueMatches = issueMatches.concat(matches);
+                  const matches = comment.body ? comment.body.match(/closes #(\d+)/gi) || [] : [];
+                  issueMatches = issueMatches.concat(matches);
                 }
 
                 // Extraer los números de issues y cerrarlas si siguen abiertas
