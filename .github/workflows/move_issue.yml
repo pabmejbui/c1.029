@@ -3,12 +3,16 @@ name: Move Issue to Done
 on:
   pull_request:
     types: [closed]
+  issue_comment:
+    types: [created, edited]
+  workflow_dispatch:  # Permite ejecutar manualmente desde GitHub Actions
 
 jobs:
   move-issue:
     runs-on: ubuntu-latest
     steps:
-      - name: Move Issue to Done
+      - name: Move Issue to Done (PR Body)
+        if: github.event_name == 'pull_request'
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -22,3 +26,100 @@ jobs:
                 state: "closed"
               });
             }
+
+      - name: Move Issue to Done (Comment)
+        if: github.event_name == 'issue_comment'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const comment_body = context.payload.comment.body;
+            const issue_number = comment_body.match(/closes #(\d+)/i);
+            if (issue_number) {
+              github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue_number[1],
+                state: "closed"
+              });
+            }
+
+  check-closed-prs:
+    name: Check Closed PRs
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'  # Solo ejecuta este job cuando es manual
+    steps:
+      - name: Find Closed PRs with Unclosed Issues
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            async function getClosedPRs() {
+              const { data: prs } = await github.rest.pulls.list({
+                owner,
+                repo,
+                state: "closed",
+                per_page: 50
+              });
+
+              return prs;
+            }
+
+            async function getPRComments(prNumber) {
+              const { data: comments } = await github.rest.issues.listComments({
+                owner,
+                repo,
+                issue_number: prNumber,
+                per_page: 50
+              });
+
+              return comments.map(comment => comment.body);
+            }
+
+            async function closeIssue(issue_number) {
+              try {
+                const { data: issue } = await github.rest.issues.get({
+                  owner,
+                  repo,
+                  issue_number
+                });
+
+                if (issue.state !== "closed") {
+                  await github.rest.issues.update({
+                    owner,
+                    repo,
+                    issue_number,
+                    state: "closed"
+                  });
+                  console.log(`Closed issue #${issue_number}`);
+                } else {
+                  console.log(`Issue #${issue_number} is already closed.`);
+                }
+              } catch (error) {
+                console.error(`Error closing issue #${issue_number}: ${error.message}`);
+              }
+            }
+
+            (async () => {
+              const closedPRs = await getClosedPRs();
+
+              for (const pr of closedPRs) {
+                let issueMatches = pr.body ? pr.body.match(/closes #(\d+)/gi) : [];
+
+                // Buscar referencias en los comentarios de la PR
+                const comments = await getPRComments(pr.number);
+                for (const comment of comments) {
+                  const matches = comment.match(/closes #(\d+)/gi);
+                  if (matches) issueMatches = issueMatches.concat(matches);
+                }
+
+                // Extraer los números de issues y cerrarlas si siguen abiertas
+                const issueNumbers = [...new Set(issueMatches.map(match => match.match(/\d+/)[0]))];
+                for (const issueNumber of issueNumbers) {
+                  await closeIssue(issueNumber);
+                }
+              }
+            })();
