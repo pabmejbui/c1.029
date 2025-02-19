@@ -76,6 +76,7 @@ jobs:
                 per_page: 50
               });
 
+              console.log(`PR #${prNumber} tiene ${comments.length} comentarios.`);
               return comments || []; // Asegurar que siempre se devuelva un array
             }
 
@@ -112,6 +113,7 @@ jobs:
                 // Buscar referencias en los comentarios de la PR
                 const comments = await getPRComments(pr.number);
                 for (const comment of comments) {
+                  console.log(`Analizando comentario en PR #${pr.number}: ${comment.body}`);
                   const matches = comment.body ? comment.body.match(/closes #(\d+)/gi) || [] : [];
                   issueMatches = issueMatches.concat(matches);
                 }
